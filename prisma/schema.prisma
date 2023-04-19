@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model admin {
+  adminId        Int                  @id @default(autoincrement())
+  securityStatus admin_securityStatus @default(active)
+  user           user                 @relation(fields: [adminId], references: [userId], map: "adminToUserFk")
+}
+
+model business {
+  businessId     Int                      @id @default(autoincrement())
+  name           String?                  @db.VarChar(250)
+  abn            String?                  @db.VarChar(250)
+  securityStatus business_securityStatus? @default(active)
+  manager        manager[]
+  staffmember    staffmember[]
+}
+
+model client {
+  clientId       Int                    @id @default(autoincrement())
+  contactNo      String?                @db.VarChar(20)
+  name           String?                @db.VarChar(250)
+  email          String?                @db.VarChar(250)
+  contactPerson  String?                @db.VarChar(250)
+  securityStatus client_securityStatus? @default(active)
+  abn            String?                @db.VarChar(250)
+  job            job[]
+  site           site[]
+}
+
+model job {
+  jobId          Int                 @id @default(autoincrement())
+  frequency      String?             @db.VarChar(100)
+  endTime        DateTime?           @db.Timestamp(0)
+  startTime      DateTime?           @db.Timestamp(0)
+  beforePhotos   String?             @db.VarChar(500)
+  reportStatus   String?             @db.VarChar(100)
+  securityStatus job_securityStatus? @default(active)
+  jobStatus      job_jobStatus?      @default(pending)
+  afterPhotos    String?             @db.VarChar(500)
+  timeRange      String?             @db.VarChar(100)
+  abn            String?             @db.VarChar(250)
+  managerId      Int?
+  clientId       Int?
+  client         client?             @relation(fields: [clientId], references: [clientId], onDelete: Restrict, map: "jobToClientsFk")
+  manager        manager?            @relation(fields: [managerId], references: [managerId], onDelete: Restrict, map: "jobToManagerFk")
+  jobtask        jobtask[]
+  staffmemberjob staffmemberjob[]
+  task           task[]
+
+  @@index([abn], map: "jobToClientFk")
+  @@index([clientId], map: "jobToClientsFk")
+  @@index([managerId], map: "jobToManagerFk")
+}
+
+model manager {
+  managerId      Int                     @id @default(autoincrement())
+  businessId     Int?
+  securityStatus manager_securityStatus? @default(active)
+  job            job[]
+  business       business?               @relation(fields: [businessId], references: [businessId], onDelete: Restrict, map: "managerToBusinessFk")
+  user           user                    @relation(fields: [managerId], references: [userId], map: "managerToUserFk")
+
+  @@index([businessId], map: "managerToBusinessFk")
+}
+
+model user {
+  userId         Int                  @id @default(autoincrement())
+  username       String?              @db.VarChar(250)
+  email          String?              @db.VarChar(250)
+  password       String?              @db.VarChar(500)
+  image          String?              @db.VarChar(500)
+  type           user_type?
+  createdTime    DateTime             @default(now()) @db.Timestamp(0)
+  securityStatus user_securityStatus? @default(active)
+  admin          admin?
+  manager        manager?
+  staffmember    staffmember?
+}
+
+model jobtask {
+  jobId  Int
+  taskId Int
+  job    job  @relation(fields: [jobId], references: [jobId], map: "jobtasksToJobFK")
+  task   task @relation(fields: [taskId], references: [taskId], map: "jobtasksToTasksFK")
+
+  @@id([jobId, taskId])
+  @@index([taskId], map: "jobtasksToTasksFK")
+}
+
+model site {
+  siteId         Int                  @id @default(autoincrement())
+  siteName       String?              @db.VarChar(250)
+  siteAddress    String?              @db.VarChar(500)
+  securityStatus site_securityStatus? @default(active)
+  clientId       Int?
+  client         client?              @relation(fields: [clientId], references: [clientId], onDelete: Restrict, map: "sitesToClientFK")
+
+  @@index([clientId], map: "sitesToClientFK")
+}
+
+model staffmember {
+  staffId        Int                         @id @default(autoincrement())
+  email          String?                     @db.VarChar(250)
+  phone          String?                     @db.VarChar(20)
+  dob            DateTime?                   @db.Date
+  firstName      String?                     @db.VarChar(250)
+  lastName       String?                     @db.VarChar(250)
+  address        String?                     @db.VarChar(500)
+  securityStatus staffmember_securityStatus? @default(active)
+  businessId     Int?
+  business       business?                   @relation(fields: [businessId], references: [businessId], onDelete: Restrict, map: "staffMembersToBusinessFK")
+  user           user                        @relation(fields: [staffId], references: [userId], map: "staffMembersToUserFK")
+  staffmemberjob staffmemberjob[]
+
+  @@index([businessId], map: "staffMembersToBusinessFK")
+}
+
+model staffmemberjob {
+  jobId       Int
+  staffId     Int
+  job         job         @relation(fields: [jobId], references: [jobId], onUpdate: Restrict, map: "staffmembersjobToJobFK")
+  staffmember staffmember @relation(fields: [staffId], references: [staffId], map: "staffmembersjobToStaffmembersFK")
+
+  @@id([jobId, staffId])
+  @@index([staffId], map: "staffmembersjobToStaffmembersFK")
+}
+
+model task {
+  taskId         Int                  @id @default(autoincrement())
+  task           String?              @db.VarChar(500)
+  description    String?              @db.VarChar(1000)
+  status         task_status?         @default(pending)
+  securityStatus task_securityStatus? @default(active)
+  jobId          Int?
+  jobtask        jobtask[]
+  job            job?                 @relation(fields: [jobId], references: [jobId], onDelete: Restrict, map: "taskToJobFK")
+
+  @@index([jobId], map: "taskToJobFK")
+}
+
+enum admin_securityStatus {
+  active
+  inactive
+}
+
+enum business_securityStatus {
+  active
+  inactive
+}
+
+enum client_securityStatus {
+  active
+  inactive
+}
+
+enum user_type {
+  admin
+  manager
+  staffMember
+  EMPTY_ENUM_VALUE @map("")
+}
+
+enum job_securityStatus {
+  active
+  inactive
+}
+
+enum job_jobStatus {
+  pending
+  inProgress
+  completed
+  failed
+}
+
+enum user_securityStatus {
+  active
+  inactive
+}
+
+enum manager_securityStatus {
+  active
+  inactive
+}
+
+enum site_securityStatus {
+  active
+  inactive
+  EMPTY_ENUM_VALUE @map("")
+}
+
+enum task_status {
+  pending
+  inProgress
+  completed
+  failed
+}
+
+enum task_securityStatus {
+  active
+  inactive
+}
+
+enum staffmember_securityStatus {
+  active
+  inactive
+}
